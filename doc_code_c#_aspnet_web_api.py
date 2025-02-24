@@ -3,10 +3,13 @@ import sys
 
 def es_archivo_importante(nombre_archivo):
     """Verifica si un archivo tiene una extensión relevante para un proyecto ASP.NET Core Web API."""
-    extensiones_importantes = [
-        '.cs', '.csproj', '.sln', '.json', '.xml', '.razor'
-    ]
+    extensiones_importantes = ['.cs', '.csproj', '.sln', '.json', '.xml', '.razor']
     return os.path.splitext(nombre_archivo)[1].lower() in extensiones_importantes
+
+def es_archivo_irrelevante(nombre_archivo):
+    """Filtra archivos irrelevantes para la documentación, como cachés y archivos de configuración interna de Visual Studio."""
+    palabras_clave_irrelevantes = ['.vs', 'bin', 'obj', 'cache', 'temp', '.git', 'node_modules', '.vscode']
+    return any(palabra in nombre_archivo.lower() for palabra in palabras_clave_irrelevantes)
 
 def documentar_codigo(directorio_a_documentar, nombre_archivo_salida):
     """Genera documentación de archivos importantes dentro de un proyecto ASP.NET Core Web API."""
@@ -21,24 +24,27 @@ def documentar_codigo(directorio_a_documentar, nombre_archivo_salida):
 
     with open(archivo_salida, 'w', encoding='utf-8') as archivo_txt:
         for root, _, files in os.walk(directorio_a_documentar):
+            if es_archivo_irrelevante(root):
+                continue  # Ignorar carpetas irrelevantes
+
             estructura_directorio = os.path.relpath(root, directorio_a_documentar)
             estructura_directorio = estructura_directorio.replace(os.sep, " > ")
 
             for file in files:
+                if not es_archivo_importante(file):
+                    continue  # Ignorar archivos no relevantes
+
                 archivo_txt.write(f'Estructura: {estructura_directorio}\n')
                 archivo_txt.write(f'Archivo: {file}\n')
                 archivo_txt.write('-' * 50 + '\n')
 
-                if es_archivo_importante(file):
-                    path_completo = os.path.join(root, file)
-                    try:
-                        with open(path_completo, 'r', encoding='utf-8') as codigo:
-                            archivo_txt.write(codigo.read())
-                    except Exception as e:
-                        archivo_txt.write(f"Error al leer el archivo: {str(e)}\n")
-                else:
-                    archivo_txt.write(f"[Archivo no incluido en la documentación detallada: {file}]\n")
-
+                path_completo = os.path.join(root, file)
+                try:
+                    with open(path_completo, 'r', encoding='utf-8') as codigo:
+                        archivo_txt.write(codigo.read())
+                except Exception as e:
+                    archivo_txt.write(f"Error al leer el archivo: {str(e)}\n")
+                
                 archivo_txt.write('\n\n')
 
     return archivo_salida
